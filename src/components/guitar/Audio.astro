@@ -58,6 +58,7 @@ const { src, caption, title } = Astro.props;
     };
     audio.addEventListener('loadedmetadata', sync);
     audio.addEventListener('timeupdate', sync);
+    if (audio.readyState >= 1) sync(); // metadata 可能在這段程式執行前就載好了
     audio.addEventListener('play', () => { box.classList.add('playing'); play.setAttribute('aria-label', '暫停'); });
     audio.addEventListener('pause', () => { box.classList.remove('playing'); play.setAttribute('aria-label', '播放'); });
     play.addEventListener('click', () => {
