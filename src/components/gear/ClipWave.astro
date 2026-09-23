@@ -1,0 +1,54 @@
+---
+/**
+ * 破音示意：同一個訊號，Gain 越大，波形越早撞到電路的上限、頂端被削平。
+ *
+ *   <ClipWave />
+ */
+interface Props {
+  caption?: string;
+}
+const { caption = '虛線是電路能處理的上限。Gain 越大，波形越早撞到上限、頂端被削平，聲音就越破。' } = Astro.props;
+
+const PANELS = [
+  { gain: 0.7, name: 'Gain 小', sub: '乾淨 Clean' },
+  { gain: 2, name: 'Gain 中', sub: '微破 Overdrive' },
+  { gain: 7, name: 'Gain 大', sub: '重破 Distortion' },
+];
+const W = 200, H = 110, PAD = 10, MID = H / 2, AMP = 38, STEPS = 200;
+// tanh 模擬電路的軟性上限：訊號小時幾乎不變形，越大越接近方波
+const wave = (g: number) =>
+  Array.from({ length: STEPS + 1 }, (_, i) => {
+    const t = (i / STEPS) * 4 * Math.PI;
+    const x = PAD + (i / STEPS) * (W - 2 * PAD);
+    const y = MID - AMP * Math.tanh(g * Math.sin(t));
+    return `${i ? 'L' : 'M'}${x.toFixed(1)} ${y.toFixed(1)}`;
+  }).join('');
+---
+
+<figure class="figure clipwave">
+  <div class="panels">
+    {PANELS.map((p) => (
+      <div class="panel">
+        <svg class="dg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${p.name}：${p.sub}的波形`}>
+          <line class="axis" x1={PAD} x2={W - PAD} y1={MID} y2={MID} />
+          <line class="limit" x1={PAD} x2={W - PAD} y1={MID - AMP} y2={MID - AMP} />
+          <line class="limit" x1={PAD} x2={W - PAD} y1={MID + AMP} y2={MID + AMP} />
+          <path class="wave" d={wave(p.gain)} />
+        </svg>
+        <b>{p.name}</b>
+        <small>{p.sub}</small>
+      </div>
+    ))}
+  </div>
+  <figcaption class="fig-cap">{caption}</figcaption>
+</figure>
+
+<style>
+  .panels { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+  .panel { text-align: center; }
+  .panel b { display: block; font-size: 15px; color: var(--text); }
+  .panel small { color: var(--muted); font-size: 12.5px; }
+  .axis { stroke: var(--line); stroke-width: 1; }
+  .limit { stroke: var(--cat-tech); stroke-width: 1.5; stroke-dasharray: 5 4; opacity: 0.8; }
+  .wave { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linejoin: round; }
+</style>

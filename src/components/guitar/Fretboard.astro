@@ -4,13 +4,15 @@
  *
  *   <Fretboard root="A" scale="minor-pentatonic" from={4} to={9} title="A 小調五聲 · 第一指型" />
  *   <Fretboard root="A" notes="6/5 6/8 5/5 5/7" />        ← 只標指定位置（弦/格）
+ *   <Fretboard plain notes="6/0 6/1 6/3" />                ← 只顯示音名（不標根音、沒有切換鈕），例如認音用
  *
  * scale 可以是 src/lib/music.ts 裡的名稱，也可以直接寫音程，例如 "1 3 5 b7"。
  */
 import { fretboardNotes, parsePositions, STRING_NAMES, type FretNote } from '@/lib/music';
 
 interface Props {
-  root: string;
+  /** 根音（plain 模式可省略） */
+  root?: string;
   scale?: string;
   notes?: string;
   from?: number;
@@ -19,8 +21,11 @@ interface Props {
   caption?: string;
   /** 一開始顯示音名還是音程 */
   show?: 'name' | 'interval';
+  /** 只顯示音名：不標根音、不顯示「音名／音程」切換 */
+  plain?: boolean;
 }
-const { root, scale, notes, title, caption, show = 'name' } = Astro.props;
+const { root = 'C', scale, notes, title, caption, plain = false } = Astro.props;
+const show = plain ? 'name' : (Astro.props.show ?? 'name');
 let { from, to } = Astro.props;
 if (notes && (from === undefined || to === undefined)) {
   const frets = parsePositions(notes).map((p) => p.fret);
@@ -30,13 +35,13 @@ if (notes && (from === undefined || to === undefined)) {
 from ??= 0;
 to ??= 12;
 
-const list: FretNote[] = fretboardNotes({ root, scale, notes, from, to });
+const list: FretNote[] = fretboardNotes({ root, scale, notes, from, to }).map((x) => (plain ? { ...x, isRoot: false } : x));
 const hasOpen = from === 0;
 const first = Math.max(from, 1);
 const n = to - first + 1;
 const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
 const frets = Array.from({ length: n }, (_, i) => first + i);
-const label = `${title ?? `${root} 指板圖`}，第 ${from} 到 ${to} 格：` + list.map((x) => `${x.string} 弦 ${x.fret} 格 ${x.name}`).join('、');
+const label = `${title ?? (plain ? '指板圖' : `${root} 指板圖`)}，第 ${from} 到 ${to} 格：` + list.map((x) => `${x.string} 弦 ${x.fret} 格 ${x.name}`).join('、');
 
 // ── horizontal geometry ──
 const hC = n <= 6 ? 72 : Math.max(44, Math.round(432 / n));
@@ -62,10 +67,12 @@ const vy = (f: number) => (f === 0 ? vY0 - 17 : vY0 + (f - first + 0.5) * vC);
 <figure class="figure fretboard" data-label={show}>
   <div class="fig-head">
     {title && <span class="fig-title">{title}</span>}
-    <div class="toggle" role="group" aria-label="顯示方式">
-      <button type="button" data-fb-show="name" aria-pressed={show === 'name' ? 'true' : 'false'}>音名</button>
-      <button type="button" data-fb-show="interval" aria-pressed={show === 'interval' ? 'true' : 'false'}>音程</button>
-    </div>
+    {!plain && (
+      <div class="toggle" role="group" aria-label="顯示方式">
+        <button type="button" data-fb-show="name" aria-pressed={show === 'name' ? 'true' : 'false'}>音名</button>
+        <button type="button" data-fb-show="interval" aria-pressed={show === 'interval' ? 'true' : 'false'}>音程</button>
+      </div>
+    )}
   </div>
 
   <div class="fb-h">

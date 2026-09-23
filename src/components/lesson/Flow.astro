@@ -1,0 +1,66 @@
+---
+/**
+ * 流程圖：一步接一步。寬的時候橫排，窄（手機）的時候直排。
+ *
+ *   <Flow items={[{ title: '琴弦', desc: '撥弦後振動' }, { title: '拾音器', desc: '振動 → 電訊號' }]} />
+ */
+interface Item {
+  title: string;
+  desc?: string;
+}
+interface Props {
+  items: Item[];
+  title?: string;
+  caption?: string;
+}
+const { items, title, caption } = Astro.props;
+---
+
+<figure class="figure flow">
+  {title && <div class="fig-head"><span class="fig-title">{title}</span></div>}
+  <ol class="steps">
+    {items.map((it, i) => (
+      <li class="step">
+        <span class="n">{i + 1}</span>
+        <b>{it.title}</b>
+        {it.desc && <small>{it.desc}</small>}
+      </li>
+    ))}
+  </ol>
+  {caption && <figcaption class="fig-cap">{caption}</figcaption>}
+</figure>
+
+<style>
+  .flow { container-type: inline-size; }
+  .steps { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); gap: 22px; }
+  .step {
+    position: relative;
+    margin: 0;
+    background: var(--bg);
+    border: 2px solid var(--line-strong);
+    border-radius: var(--hand);
+    padding: 10px 8px 12px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .n { font-family: var(--font-head); color: var(--accent); font-size: 13px; line-height: 1.2; }
+  .step b { font-size: 15.5px; color: var(--text); line-height: 1.35; }
+  .step small { font-size: 12.5px; color: var(--muted); line-height: 1.45; }
+  .step:not(:last-child)::after {
+    content: '→';
+    position: absolute;
+    right: -19px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--accent);
+    font-weight: 700;
+  }
+  @container (max-width: 620px) {
+    .steps { grid-auto-flow: row; gap: 20px; }
+    .step { display: grid; grid-template-columns: 1.4em auto minmax(0, 1fr); align-items: baseline; column-gap: 10px; text-align: left; padding: 10px 14px; }
+    .step:not(:last-child)::after { content: '↓'; right: auto; left: 50%; top: auto; bottom: -21px; transform: translateX(-50%); }
+  }
+</style>

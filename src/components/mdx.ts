@@ -7,9 +7,10 @@ import Chord from './guitar/Chord.astro';
 import Chords from './guitar/Chords.astro';
 import Tab from './guitar/Tab.astro';
 import Audio from './guitar/Audio.astro';
+import ClipWave from './gear/ClipWave.astro';
 import Whiteboard from './lesson/Whiteboard.astro';
 import Exercise from './lesson/Exercise.astro';
 import Callout from './lesson/Callout.astro';
-import QA from './lesson/QA.astro';
+import Flow from './lesson/Flow.astro';
 
-export const mdxComponents = { Fretboard, Chord, Chords, Tab, Audio, Whiteboard, Exercise, Callout, QA };
+export const mdxComponents = { Fretboard, Chord, Chords, Tab, Audio, ClipWave, Whiteboard, Exercise, Callout, Flow };

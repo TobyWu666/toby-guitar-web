@@ -27,7 +27,7 @@ const cats = Object.entries(CATEGORIES).map(([key, c]) => {
 <Base>
   <div class="wrap">
     {latest ? (
-      <section class="hero">
+      <section class:list={['hero', { solo: latest.data.homework.length === 0 }]}>
         <div>
           <p class="kicker">最新一堂 · 第 {latest.data.lesson} 堂 · {fmtLong(latest.data.date)}</p>
           <h1 set:html={titleHtml(latest.data.title, latest.data.highlight)} />
@@ -76,6 +76,7 @@ const cats = Object.entries(CATEGORIES).map(([key, c]) => {
 
 <style>
   .hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 48px; padding-block: 60px 28px; align-items: start; }
+  .hero.solo { grid-template-columns: 1fr; }
   @media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 32px 12px; } }
   .cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
   @media (max-width: 760px) { .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

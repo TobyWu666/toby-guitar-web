@@ -1,7 +1,7 @@
 export const SITE = {
   name: '偷筆吉他',
-  tagline: '吉他課堂筆記',
-  description: '偷筆吉他的課堂筆記：每一堂課的重點、譜例、作業，以及整理好的知識地圖。',
+  tagline: '吉他筆記',
+  description: '偷筆吉他的筆記：每一堂課的重點、譜例、作業，以及整理好的知識地圖。',
   lang: 'zh-Hant',
 };
 
