@@ -3,6 +3,7 @@
 A guitar teacher's lesson-notes site. The readers are the teacher's students (one group class, knowledge-focused: theory, technique, fretboard — **no song lessons**). All site copy is Traditional Chinese (Taiwan).
 
 - Stack: Astro 7 + MDX, fully static. `npm run dev` (port 4321), `npm run build` (runs `astro check` first).
+- Hosting: GitHub Pages at https://guitar.wutoby.com (public repo TobyWu666/toby-guitar-web). Every push to `main` deploys via `.github/workflows/deploy.yml`. DNS for wutoby.com is on Cloudflare (`guitar` CNAME → tobywu666.github.io, DNS only).
 - Design: "whiteboard" style — tokens in `src/styles/global.css` (dark mode = chalkboard). Use tokens, never hard-coded colors. Category colours are `--cat-<key>`.
 - Logo: `src/components/Logo.astro` (stroke paths vectorised from `design/logo/toby-logo-original.png`; script in `design/logo/vectorize.py`).
 
