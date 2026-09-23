@@ -1,0 +1,19 @@
+---
+/** 重點提示框：<Callout>五個指型其實是同一組音。</Callout> */
+interface Props {
+  title?: string;
+}
+const { title = '重點' } = Astro.props;
+---
+
+<aside class="callout">
+  <strong class="callout-title">{title}</strong>
+  <div><slot /></div>
+</aside>
+
+<style>
+  .callout { border-left: 4px solid var(--accent); background: var(--accent-soft); padding: 14px 18px; border-radius: 0 var(--radius) var(--radius) 0; margin: 18px 0; color: var(--text); }
+  .callout-title { font-family: var(--font-head); font-weight: 400; color: var(--accent); display: block; margin-bottom: 2px; }
+  .callout :global(p) { color: var(--text) !important; }
+  .callout :global(p:last-child) { margin-bottom: 0; }
+</style>

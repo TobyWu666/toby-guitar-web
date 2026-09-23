@@ -1,0 +1,10 @@
+---
+/** 把好幾個 <Chord> 排成一排：<Chords><Chord …/><Chord …/></Chords> */
+---
+
+<div class="chords"><slot /></div>
+
+<style>
+  .chords { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; }
+  .chords :global(.chord) { margin: 0; width: 150px; }
+</style>

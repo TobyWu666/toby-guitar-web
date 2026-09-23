@@ -1,0 +1,33 @@
+---
+import Base from '@/layouts/Base.astro';
+import KnowledgeMap from '@/components/KnowledgeMap.astro';
+import { CATEGORIES } from '@/data/site';
+import { getLessons, getTopics, lessonsByTopic } from '@/lib/content';
+
+const lessons = await getLessons();
+const topics = await getTopics();
+const counts = new Map([...lessonsByTopic(lessons)].map(([k, v]) => [k, v.length]));
+---
+
+<Base title="知識地圖" description="所有觀念的學習順序：從哪裡開始、下一步學什麼，以及每個觀念在哪幾堂課教過。">
+  <div class="wrap">
+    <header class="page-head">
+      <p class="kicker">知識地圖</p>
+      <h1>從哪裡開始、<span class="mark">下一步</span>學什麼</h1>
+      <p class="lede">箭頭代表「先學 → 再學」。點任何一個知識點，就能看到說明和教過的課。</p>
+      <div class="legend">
+        {Object.entries(CATEGORIES).map(([k, c]) => <span data-cat={k}><i></i>{c.name}</span>)}
+        <span class="up"><i></i>即將上到</span>
+      </div>
+    </header>
+    <KnowledgeMap topics={topics} counts={counts} />
+  </div>
+</Base>
+
+<style>
+  .page-head { padding-block: 44px 24px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 13.5px; color: var(--muted); }
+  .legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .legend i { width: 11px; height: 11px; border-radius: 3px; background: var(--c); }
+  .legend .up i { background: none; border: 1.5px dashed var(--muted); }
+</style>

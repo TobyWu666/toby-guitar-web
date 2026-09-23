@@ -1,0 +1,19 @@
+---
+import Base from '@/layouts/Base.astro';
+---
+
+<Base title="找不到頁面">
+  <div class="wrap nf">
+    <p class="kicker">404</p>
+    <h1>這一頁<span class="mark">不見了</span></h1>
+    <p class="lede">可能是網址打錯，或這堂課還沒上傳。試試搜尋，或從課程列表找找看。</p>
+    <div class="actions">
+      <button class="btn primary" type="button" data-open-search>搜尋筆記</button>
+      <a class="btn ghost" href="/lessons/">所有課程</a>
+    </div>
+  </div>
+</Base>
+
+<style>
+  .nf { padding-block: 72px; }
+</style>

@@ -1,0 +1,84 @@
+---
+import { render } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+import TopicChip from '@/components/TopicChip.astro';
+import KnowledgeMap from '@/components/KnowledgeMap.astro';
+import { mdxComponents } from '@/components/mdx';
+import { CATEGORIES } from '@/data/site';
+import { fmtShort, getLessons, getTopics, lessonUrl, lessonsByTopic, type Topic } from '@/lib/content';
+
+export async function getStaticPaths() {
+  const topics = await getTopics();
+  return topics.map((topic) => ({ params: { id: topic.id }, props: { topic } }));
+}
+
+interface Props {
+  topic: Topic;
+}
+const { topic } = Astro.props;
+const { data } = topic;
+const lessons = await getLessons();
+const topics = await getTopics();
+const byTopic = lessonsByTopic(lessons);
+const taughtIn = byTopic.get(topic.id) ?? [];
+const nexts = topics.filter((t) => t.data.prerequisites.some((p) => p.id === topic.id));
+const counts = new Map([...byTopic].map(([k, v]) => [k, v.length]));
+const { Content } = await render(topic);
+const hasBody = Boolean(topic.body?.trim());
+---
+
+<Base title={data.name} description={data.description}>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="麵包屑"><a href="/topics/">知識地圖</a> / {data.name}</nav>
+    <div class="topic-grid">
+      <article>
+        <header class="topic-head">
+          <span class="chip" data-cat={data.category}>{CATEGORIES[data.category].name}</span>
+          <h1>{data.name}</h1>
+          <p class="lede">{data.description}</p>
+        </header>
+        {hasBody && <div class="prose"><Content components={mdxComponents} /></div>}
+      </article>
+
+      <aside class="card side">
+        <h2 class="side-h">要先懂</h2>
+        {data.prerequisites.length
+          ? <div class="chips">{data.prerequisites.map((p) => <TopicChip id={p.id} />)}</div>
+          : <p class="none">這是起點，不需要前置知識。</p>}
+
+        <h2 class="side-h">教過的課</h2>
+        {taughtIn.length
+          ? <ul class="lessons">{taughtIn.map((l) => <li><a href={lessonUrl(l)}><small>第 {l.data.lesson} 堂 · {fmtShort(l.data.date)}</small>{l.data.title}</a></li>)}</ul>
+          : <p class="none">還沒上到，敬請期待。</p>}
+
+        <h2 class="side-h">接下來可以學</h2>
+        {nexts.length
+          ? <div class="chips">{nexts.map((t) => <TopicChip id={t.id} />)}</div>
+          : <p class="none">—</p>}
+      </aside>
+    </div>
+
+    <section class="sec">
+      <div class="sec-head"><h2>在地圖上的位置</h2><a class="link" href="/topics/">完整地圖 →</a></div>
+      <KnowledgeMap topics={topics} counts={counts} current={topic.id} />
+    </section>
+  </div>
+</Base>
+
+<style>
+  .crumbs { font-size: 14px; color: var(--muted); padding-top: 28px; }
+  .crumbs a { color: var(--muted); text-decoration: none; }
+  .crumbs a:hover { color: var(--accent); }
+  .topic-grid { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 48px; align-items: start; padding-top: 18px; }
+  @media (max-width: 860px) { .topic-grid { grid-template-columns: 1fr; gap: 24px; } }
+  .topic-head h1 { margin-top: 14px; }
+  .side { position: sticky; top: calc(var(--header-h) + 24px); }
+  @media (max-width: 860px) { .side { position: static; } }
+  .side-h { font-size: 15px; color: var(--muted); margin: 18px 0 10px; }
+  .side-h:first-child { margin-top: 0; }
+  .none { font-size: 14px; color: var(--muted); margin: 0; }
+  .lessons { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .lessons a { display: block; padding: 8px 12px; border: 1.5px solid var(--line); border-radius: var(--radius); text-decoration: none; color: var(--text); font-size: 15px; line-height: 1.45; }
+  .lessons a:hover { border-color: var(--accent); }
+  .lessons small { display: block; color: var(--muted); font-size: 12.5px; }
+</style>

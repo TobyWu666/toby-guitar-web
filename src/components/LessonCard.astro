@@ -1,0 +1,41 @@
+---
+import { getEntries } from 'astro:content';
+import TopicChip from './TopicChip.astro';
+import { fmtShort, lessonUrl, type Lesson } from '@/lib/content';
+
+interface Props {
+  lesson: Lesson;
+}
+const { lesson } = Astro.props;
+const topics = await getEntries(lesson.data.topics);
+const cats = [...new Set(topics.map((t) => t.data.category))].join(' ');
+---
+
+<li class="lesson-card" data-cats={cats}>
+  <p class="lc-no">第 {lesson.data.lesson} 堂 <span>{fmtShort(lesson.data.date)}</span></p>
+  <h3><a href={lessonUrl(lesson)}>{lesson.data.title}</a></h3>
+  <p class="lc-sum">{lesson.data.summary}</p>
+  {topics.length > 0 && <div class="chips">{topics.map((t) => <TopicChip id={t.id} />)}</div>}
+</li>
+
+<style>
+  .lesson-card {
+    position: relative;
+    background: var(--surface);
+    border: 2px solid var(--line-strong);
+    border-radius: var(--hand);
+    padding: 16px 20px 18px;
+    box-shadow: var(--shadow);
+    transition: transform 0.18s, border-color 0.18s;
+  }
+  .lesson-card:hover { transform: translateY(-2px) rotate(-0.4deg); border-color: var(--accent); }
+  .lc-no { font-family: var(--font-head); color: var(--accent); font-size: 15px; margin: 0; }
+  .lc-no span { font-family: var(--font-body); color: var(--muted); font-size: 13px; margin-left: 6px; }
+  h3 { font-size: 21px; line-height: 1.4; margin: 4px 0 4px; }
+  h3 a { color: var(--text); text-decoration: none; }
+  /* 整張卡片都可以點，但標籤仍然可以單獨點 */
+  h3 a::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
+  .lesson-card:hover h3 a { color: var(--accent); }
+  .lc-sum { margin: 0 0 12px; color: var(--text-2); font-size: 15px; line-height: 1.65; }
+  .chips { position: relative; z-index: 1; }
+</style>

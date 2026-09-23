@@ -1,0 +1,25 @@
+---
+import Logo from './Logo.astro';
+import { SITE } from '@/data/site';
+import { getLessons, fmtShort } from '@/lib/content';
+
+const [latest] = await getLessons();
+---
+
+<footer class="ftr">
+  <div class="wrap ftr-in">
+    <Logo class="ftr-logo" weight={28} />
+    <span>{SITE.name} · {SITE.tagline}</span>
+    {latest && <span class="upd">最後更新：第 {latest.data.lesson} 堂 · {fmtShort(latest.data.date)}</span>}
+    <button class="theme-link" type="button" data-theme-toggle>切換深色／淺色</button>
+  </div>
+</footer>
+
+<style>
+  .ftr { border-top: 1px solid var(--line); margin-top: 56px; padding-block: 28px calc(40px + env(safe-area-inset-bottom, 0px)); color: var(--muted); font-size: 13.5px; }
+  .ftr-in { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .ftr :global(.ftr-logo) { height: 32px; width: auto; color: var(--muted); }
+  .upd { margin-left: auto; }
+  .theme-link { border: 0; background: none; padding: 0; color: var(--accent); font-size: 13.5px; cursor: pointer; }
+  @media (max-width: 560px) { .upd { margin-left: 0; flex-basis: 100%; } }
+</style>

@@ -1,0 +1,156 @@
+---
+import { getEntries, render } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+import TopicChip from '@/components/TopicChip.astro';
+import Homework from '@/components/lesson/Homework.astro';
+import { mdxComponents } from '@/components/mdx';
+import { fmtLong, getLessons, lessonUrl, type Lesson } from '@/lib/content';
+
+export async function getStaticPaths() {
+  const lessons = await getLessons();
+  return lessons.map((lesson, i) => ({
+    params: { no: String(lesson.data.lesson) },
+    props: { lesson, older: lessons[i + 1], newer: lessons[i - 1] },
+  }));
+}
+
+interface Props {
+  lesson: Lesson;
+  older?: Lesson;
+  newer?: Lesson;
+}
+const { lesson, older, newer } = Astro.props;
+const { data } = lesson;
+const { Content, headings } = await render(lesson);
+const topics = await getEntries(data.topics);
+
+const HW_ID = 'homework';
+const toc = [
+  ...headings.filter((h) => h.depth === 2).map((h) => ({ id: h.slug, text: h.text })),
+  ...(data.homework.length ? [{ id: HW_ID, text: '回家作業' }] : []),
+];
+const titleHtml =
+  data.highlight && data.title.includes(data.highlight)
+    ? data.title.replace(data.highlight, `<span class="mark">${data.highlight}</span>`)
+    : data.title;
+---
+
+<Base title={`第 ${data.lesson} 堂 ${data.title}`} description={data.summary}>
+  <div class="wrap">
+    <nav class="crumbs" aria-label="麵包屑"><a href="/lessons/">課程</a> / 第 {data.lesson} 堂</nav>
+    <header class="lesson-head">
+      <p class="kicker">第 {data.lesson} 堂 · {fmtLong(data.date)}{data.draft && ' · 草稿'}</p>
+      <h1 set:html={titleHtml} />
+      <p class="lede">{data.summary}</p>
+      <div class="chips">{topics.map((t) => <TopicChip id={t.id} />)}</div>
+    </header>
+
+    {toc.length > 1 && (
+      <nav class="toc-m" aria-label="本頁目錄">
+        {toc.map((h) => <a href={`#${h.id}`} data-toc={h.id}>{h.text}</a>)}
+      </nav>
+    )}
+
+    <div class="lesson-grid">
+      <article class="prose">
+        <Content components={mdxComponents} />
+        {data.homework.length > 0 && (
+          <>
+            <h2 id={HW_ID}>回家作業</h2>
+            <Homework items={data.homework} lesson={data.lesson} />
+          </>
+        )}
+
+        <nav class="pager" aria-label="上一堂／下一堂">
+          {older ? (
+            <a href={lessonUrl(older)}><small>← 上一堂 · 第 {older.data.lesson} 堂</small>{older.data.title}</a>
+          ) : <span />}
+          {newer ? (
+            <a class="newer" href={lessonUrl(newer)}><small>下一堂 · 第 {newer.data.lesson} 堂 →</small>{newer.data.title}</a>
+          ) : (
+            <span class="pending"><small>下一堂 · 第 {data.lesson + 1} 堂</small>上完課後更新</span>
+          )}
+        </nav>
+      </article>
+
+      {toc.length > 1 && (
+        <aside class="toc">
+          <p>本頁目錄</p>
+          <ol>{toc.map((h) => <li><a href={`#${h.id}`} data-toc={h.id}>{h.text}</a></li>)}</ol>
+          {topics.length > 0 && (
+            <>
+              <p>這堂的知識點</p>
+              <div class="side-topics">{topics.map((t) => <TopicChip id={t.id} />)}</div>
+            </>
+          )}
+        </aside>
+      )}
+    </div>
+  </div>
+</Base>
+
+<style>
+  .crumbs { font-size: 14px; color: var(--muted); padding-top: 28px; }
+  .crumbs a { color: var(--muted); text-decoration: none; }
+  .crumbs a:hover { color: var(--accent); }
+  .lesson-head { padding-block: 12px 28px; border-bottom: 1px solid var(--line); }
+  .lesson-grid { display: grid; grid-template-columns: minmax(0, 1fr) 210px; gap: 64px; }
+  .toc { position: sticky; top: calc(var(--header-h) + 24px); align-self: start; padding-top: 36px; font-size: 14px; }
+  .toc p { font-family: var(--font-head); font-size: 14px; color: var(--muted); margin: 0 0 10px; }
+  .toc ol { list-style: none; margin: 0 0 28px; padding: 0; border-left: 1px solid var(--line); }
+  .toc a { display: block; padding: 4px 0 4px 14px; color: var(--muted); margin-left: -1px; border-left: 2px solid transparent; text-decoration: none; line-height: 1.5; }
+  .toc a:hover { color: var(--text); }
+  .toc a[aria-current='true'] { color: var(--text); border-left-color: var(--accent); }
+  .side-topics { display: grid; gap: 8px; justify-items: start; }
+  .toc-m { display: none; }
+  @media (max-width: 960px) {
+    .lesson-grid { grid-template-columns: 1fr; }
+    .toc { display: none; }
+    .toc-m {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      position: sticky;
+      top: calc(var(--header-h) + env(safe-area-inset-top, 0px));
+      z-index: 10;
+      background: var(--bg);
+      padding: 10px var(--pad);
+      margin-inline: calc(-1 * var(--pad));
+      border-bottom: 1px solid var(--line);
+      scrollbar-width: none;
+    }
+    .toc-m::-webkit-scrollbar { display: none; }
+    .toc-m a { flex: none; font-size: 13.5px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); text-decoration: none; }
+    .toc-m a[aria-current='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  }
+  @media (max-width: 720px) { .toc-m { top: calc(60px + env(safe-area-inset-top, 0px)); } }
+
+  .pager { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 56px; padding-top: 24px; border-top: 1px solid var(--line); }
+  .pager a, .pager span { display: block; padding: 14px 16px; border: 2px solid var(--line-strong); border-radius: var(--hand); text-decoration: none; color: var(--text); font-size: 15px; line-height: 1.5; }
+  .pager span:empty { border: 0; }
+  .pager small { display: block; color: var(--muted); font-size: 12.5px; }
+  .pager a:hover { border-color: var(--accent); }
+  .pager .newer, .pager .pending { text-align: right; }
+  .pager .pending { color: var(--muted); border-style: dashed; }
+  @media (max-width: 560px) { .pager { grid-template-columns: 1fr; } .pager span:empty { display: none; } }
+</style>
+
+<script>
+  // 目錄跟著捲動位置標示目前段落
+  const links = [...document.querySelectorAll<HTMLAnchorElement>('[data-toc]')];
+  const ids = [...new Set(links.map((a) => a.dataset.toc!))];
+  const targets = ids.map((id) => document.getElementById(id)).filter((el): el is HTMLElement => !!el);
+  const bar = document.querySelector<HTMLElement>('.toc-m');
+  let current = '';
+  function update() {
+    let cur = targets[0]?.id ?? '';
+    for (const t of targets) if (t.getBoundingClientRect().top < 160) cur = t.id;
+    if (cur === current) return;
+    current = cur;
+    links.forEach((a) => a.setAttribute('aria-current', String(a.dataset.toc === cur)));
+    const chip = bar?.querySelector<HTMLElement>(`[data-toc="${cur}"]`);
+    if (bar && chip) bar.scrollTo({ left: chip.offsetLeft - bar.clientWidth / 2 + chip.clientWidth / 2, behavior: 'smooth' });
+  }
+  addEventListener('scroll', update, { passive: true });
+  update();
+</script>

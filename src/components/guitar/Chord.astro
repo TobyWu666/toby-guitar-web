@@ -1,0 +1,72 @@
+---
+/**
+ * 和弦按法圖。
+ *
+ *   <Chord name="Am7" frets="x02010" fingers="x02010" />
+ *   <Chord name="Bm" frets="x,2,4,4,3,2" />                      ← 有兩位數格數時用逗號分隔
+ *   <Chord name="Am7" frets="x02010">旁邊的說明文字</Chord>        ← 有內文時圖文並排
+ *
+ * frets / fingers 從第 6 弦（低音 E）寫到第 1 弦；x = 不彈、0 = 空弦。
+ */
+import { noteNameAt, parseChordFrets } from '@/lib/music';
+
+interface Props {
+  name: string;
+  frets: string;
+  fingers?: string;
+  /** 用來拼音名的根音（選填，例如 Bb 和弦寫 root="Bb" 才會顯示 B♭ 而不是 A♯） */
+  root?: string;
+  caption?: string;
+}
+const { name, frets, fingers, root, caption } = Astro.props;
+const fs = parseChordFrets(frets);
+const fingerList = fingers ? parseChordFrets(fingers.replace(/0/g, 'x')) : [];
+const pressed = fs.filter((f): f is number => f !== null && f > 0);
+const maxF = Math.max(0, ...pressed);
+const base = maxF <= 4 ? 1 : Math.min(...pressed);
+const rows = Math.max(4, maxF - base + 1);
+
+const X0 = 34, Y0 = 50, G = 20, C = 26;
+const W = X0 + 5 * G + 20;
+const H = Y0 + rows * C + 30;
+const x = (i: number) => X0 + i * G; // i = 0 → 第 6 弦
+const hasText = Astro.slots.has('default');
+const label = `${name} 和弦按法：` + fs.map((f, i) => `${6 - i} 弦 ${f === null ? '不彈' : f === 0 ? '空弦' : `${f} 格`}`).join('、');
+---
+
+<figure class:list={['figure', 'chord', { 'with-text': hasText }]}>
+  <svg class="dg" viewBox={`0 0 ${W} ${H}`} role="img" aria-label={label}>
+    <text class="title" x={X0 + 2.5 * G} y="18">{name}</text>
+    {base === 1
+      ? <rect class="nut" x={X0 - 1} y={Y0 - 4} width={5 * G + 2} height="5" />
+      : <>
+          <line class="fret" x1={X0} y1={Y0} x2={X0 + 5 * G} y2={Y0} />
+          <text class="lbl" x={X0 - 8} y={Y0 + C / 2} text-anchor="end" dominant-baseline="central">{base}fr</text>
+        </>}
+    {Array.from({ length: rows }, (_, k) => <line class="fret" x1={X0} y1={Y0 + (k + 1) * C} x2={X0 + 5 * G} y2={Y0 + (k + 1) * C} />)}
+    {fs.map((f, i) => (
+      <>
+        <line class="str" x1={x(i)} y1={Y0} x2={x(i)} y2={Y0 + rows * C} stroke-width={1 + (5 - i) * 0.3} />
+        <text class="lbl" x={x(i)} y={Y0 - 14} text-anchor="middle">{f === null ? '×' : f === 0 ? '○' : ''}</text>
+        <text class="lbl" x={x(i)} y={H - 6} text-anchor="middle">{f === null ? '' : noteNameAt(6 - i, f, root)}</text>
+        {f !== null && f > 0 && (
+          <g class="note">
+            <circle cx={x(i)} cy={Y0 + (f - base + 0.5) * C} r="9" />
+            <text x={x(i)} y={Y0 + (f - base + 0.5) * C} style="font-size:11px">{fingerList[i] ?? ''}</text>
+          </g>
+        )}
+      </>
+    ))}
+  </svg>
+  {hasText && <div class="chord-text"><slot /></div>}
+  {caption && <figcaption class="fig-cap">{caption}</figcaption>}
+</figure>
+
+<style>
+  .chord { display: inline-block; width: 170px; vertical-align: top; margin-right: 10px; }
+  .chord.with-text { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 24px; align-items: center; width: auto; margin-right: 0; }
+  .chord-text :global(p:last-child) { margin-bottom: 0; }
+  @media (max-width: 560px) {
+    .chord.with-text { grid-template-columns: 110px minmax(0, 1fr); gap: 14px; }
+  }
+</style>

@@ -1,0 +1,95 @@
+---
+import '@/styles/global.css';
+import Header from '@/components/Header.astro';
+import Footer from '@/components/Footer.astro';
+import Search from '@/components/Search.astro';
+import { SITE } from '@/data/site';
+
+interface Props {
+  /** 頁面標題（不含網站名稱） */
+  title?: string;
+  description?: string;
+}
+const { title, description = SITE.description } = Astro.props;
+const fullTitle = title ? `${title} · ${SITE.name}` : `${SITE.name} · ${SITE.tagline}`;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+---
+
+<!doctype html>
+<html lang={SITE.lang}>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:locale" content="zh_TW" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#f7f8f5" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#1e2622" media="(prefers-color-scheme: dark)" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Huninn&family=JetBrains+Mono:wght@400;500;600&family=Noto+Sans+TC:wght@400;500;700&display=swap"
+    />
+    <script is:inline>
+      // 在畫面出現前套用深淺色設定、決定要不要播 logo 書寫動畫，避免閃一下
+      try {
+        const t = localStorage.getItem('theme');
+        if (t === 'dark' || t === 'light') document.documentElement.dataset.theme = t;
+        if (!sessionStorage.getItem('logo-drawn')) document.documentElement.classList.add('logo-intro');
+      } catch (e) {}
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">跳到主要內容</a>
+    <Header />
+    <main id="main">
+      <slot />
+    </main>
+    <Footer />
+    <Search />
+
+    <style is:global>
+      .skip { position: absolute; left: -9999px; top: 8px; z-index: 100; background: var(--text); color: var(--bg); padding: 8px 14px; border-radius: 8px; }
+      .skip:focus { left: 8px; }
+      .logo-intro .brand-logo path { stroke-dasharray: 1 2; stroke-dashoffset: 1.01; }
+    </style>
+
+    <script>
+      // 深淺色切換
+      document.querySelectorAll('[data-theme-toggle]').forEach((btn) =>
+        btn.addEventListener('click', () => {
+          const root = document.documentElement;
+          const isDark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+          root.dataset.theme = isDark ? 'light' : 'dark';
+          try { localStorage.setItem('theme', root.dataset.theme); } catch {}
+        }),
+      );
+
+      // Logo 一筆一筆寫出來：每次開啟網站只播一次
+      const root = document.documentElement;
+      if (root.classList.contains('logo-intro')) {
+        const logo = document.querySelector<SVGSVGElement>('.brand-logo');
+        const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (logo && !reduce) {
+          const paths = [...logo.querySelectorAll<SVGPathElement>('path')];
+          const lens = paths.map((p) => p.getTotalLength());
+          const total = lens.reduce((a, b) => a + b, 0);
+          let t = 0.15;
+          paths.forEach((p, i) => {
+            const d = Math.max(0.08, (1.4 * lens[i]) / total);
+            p.style.animation = `draw ${d.toFixed(2)}s cubic-bezier(.45,0,.4,1) ${t.toFixed(2)}s forwards`;
+            t += d + 0.05;
+          });
+        } else root.classList.remove('logo-intro');
+        try { sessionStorage.setItem('logo-drawn', '1'); } catch {}
+      }
+    </script>
+  </body>
+</html>

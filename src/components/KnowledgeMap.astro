@@ -1,0 +1,130 @@
+---
+/**
+ * 知識地圖：依 level 分欄，箭頭代表「先學 → 再學」。
+ * 寬螢幕畫連線；手機改成直列，每個節點下面直接寫「先學：…」。
+ */
+import { CATEGORIES, LEVELS } from '@/data/site';
+import { topicUrl, type Topic } from '@/lib/content';
+
+interface Props {
+  topics: Topic[];
+  counts: Map<string, number>;
+  current?: string;
+}
+const { topics, counts, current } = Astro.props;
+const name = new Map(topics.map((t) => [t.id, t.data.name]));
+const edges = topics.flatMap((t) => t.data.prerequisites.map((p) => `${p.id}>${t.id}`));
+
+// 每一欄依「前置知識在上一欄的平均位置」排序，讓箭頭少交叉
+const row = new Map<string, number>();
+const columns = LEVELS.map((_, i) => {
+  const col = topics.filter((t) => t.data.level === i + 1);
+  const key = (t: Topic) => {
+    const ps = t.data.prerequisites.map((p) => row.get(p.id)).filter((v): v is number => v !== undefined);
+    return ps.length ? ps.reduce((a, b) => a + b, 0) / ps.length : Number.POSITIVE_INFINITY;
+  };
+  const sorted = i === 0 ? col : [...col].sort((a, b) => key(a) - key(b));
+  sorted.forEach((t, j) => row.set(t.id, j));
+  return sorted;
+});
+---
+
+<div class="kmap" data-kmap data-edges={edges.join(' ')} data-current={current ?? ''}>
+  <svg class="kmap-lines" aria-hidden="true"></svg>
+  {LEVELS.map((lvName, i) => columns[i].length > 0 && (
+    <div class="lv">
+      <p class="lv-name">{lvName}</p>
+      {columns[i].map((t) => {
+        const n = counts.get(t.id) ?? 0;
+        return (
+          <a
+            class:list={['node', { upcoming: n === 0, on: t.id === current }]}
+            href={topicUrl(t.id)}
+            data-cat={t.data.category}
+            data-node={t.id}
+            aria-current={t.id === current ? 'page' : undefined}
+          >
+            <b>{t.data.name}</b>
+            <span>{n === 0 ? '即將上到' : `${CATEGORIES[t.data.category].name} · ${n} 堂課`}</span>
+            {t.data.prerequisites.length > 0 && (
+              <small class="pre">先學：{t.data.prerequisites.map((p) => name.get(p.id)).join('、')}</small>
+            )}
+          </a>
+        );
+      })}
+    </div>
+  ))}
+</div>
+
+<style>
+  .kmap {
+    position: relative;
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 44px;
+    padding: 22px;
+    background: var(--surface);
+    border: 2px solid var(--line-strong);
+    border-radius: var(--hand);
+    box-shadow: var(--shadow);
+  }
+  .kmap-lines { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .kmap-lines :global(.e) { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+  .kmap-lines :global(.ah) { fill: var(--line-strong); }
+  .kmap-lines :global(.hl.e) { stroke: var(--accent); stroke-width: 2.5; }
+  .kmap-lines :global(.hl.ah) { fill: var(--accent); }
+  .lv { display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; }
+  .lv-name { font-family: var(--font-head); font-size: 14px; letter-spacing: 0.04em; color: var(--muted); margin: 0; }
+  .node {
+    display: block;
+    text-decoration: none;
+    background: var(--bg);
+    border: 2px solid color-mix(in srgb, var(--c) 40%, var(--line));
+    border-left: 5px solid var(--c);
+    border-radius: var(--hand);
+    padding: 10px 12px;
+    line-height: 1.4;
+    transition: border-color 0.15s, transform 0.15s;
+  }
+  .node:hover { border-color: var(--c); transform: translateY(-1px); }
+  .node b { display: block; font-size: 15.5px; color: var(--text); }
+  .node span { font-size: 12.5px; color: var(--muted); }
+  .node.on { outline: 2.5px solid var(--c); outline-offset: 2px; }
+  .node.upcoming { border-style: dashed; background: transparent; }
+  .node.upcoming b { color: var(--muted); }
+  .pre { display: none; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  @media (max-width: 760px) {
+    .kmap { grid-template-columns: 1fr; gap: 26px; padding: 16px; }
+    .kmap-lines { display: none; }
+    .lv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .lv-name { grid-column: 1 / -1; }
+    .pre { display: block; }
+  }
+</style>
+
+<script>
+  function draw(map: HTMLElement) {
+    const svg = map.querySelector('svg')!;
+    const mr = map.getBoundingClientRect();
+    const cur = map.dataset.current;
+    let out = '';
+    for (const e of (map.dataset.edges ?? '').split(' ').filter(Boolean)) {
+      const [from, to] = e.split('>');
+      const a = map.querySelector(`[data-node="${from}"]`)?.getBoundingClientRect();
+      const b = map.querySelector(`[data-node="${to}"]`)?.getBoundingClientRect();
+      if (!a || !b || b.left < a.right) continue; // 只在橫向排列時畫
+      const x1 = a.right - mr.left, y1 = a.top + a.height / 2 - mr.top;
+      const x2 = b.left - mr.left - 7, y2 = b.top + b.height / 2 - mr.top;
+      const mx = (x1 + x2) / 2;
+      const hl = cur && (cur === from || cur === to) ? ' hl' : '';
+      out += `<path class="e${hl}" d="M${x1} ${y1}C${mx} ${y1} ${mx} ${y2} ${x2} ${y2}"/>`;
+      out += `<path class="ah${hl}" d="M${x2} ${y2 - 5}L${x2 + 7} ${y2}L${x2} ${y2 + 5}Z"/>`;
+    }
+    svg.innerHTML = out;
+  }
+  document.querySelectorAll<HTMLElement>('[data-kmap]').forEach((map) => {
+    const ro = new ResizeObserver(() => draw(map));
+    ro.observe(map);
+    document.fonts?.ready.then(() => draw(map));
+  });
+</script>

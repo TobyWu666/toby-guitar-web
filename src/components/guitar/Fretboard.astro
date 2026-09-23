@@ -1,0 +1,142 @@
+---
+/**
+ * 指板圖。寬的時候橫放，窄（手機）的時候自動直放。
+ *
+ *   <Fretboard root="A" scale="minor-pentatonic" from={4} to={9} title="A 小調五聲 · 第一指型" />
+ *   <Fretboard root="A" notes="6/5 6/8 5/5 5/7" />        ← 只標指定位置（弦/格）
+ *
+ * scale 可以是 src/lib/music.ts 裡的名稱，也可以直接寫音程，例如 "1 3 5 b7"。
+ */
+import { fretboardNotes, parsePositions, STRING_NAMES, type FretNote } from '@/lib/music';
+
+interface Props {
+  root: string;
+  scale?: string;
+  notes?: string;
+  from?: number;
+  to?: number;
+  title?: string;
+  caption?: string;
+  /** 一開始顯示音名還是音程 */
+  show?: 'name' | 'interval';
+}
+const { root, scale, notes, title, caption, show = 'name' } = Astro.props;
+let { from, to } = Astro.props;
+if (notes && (from === undefined || to === undefined)) {
+  const frets = parsePositions(notes).map((p) => p.fret);
+  from ??= Math.max(0, Math.min(...frets) - 1);
+  to ??= Math.max(...frets) + 1;
+}
+from ??= 0;
+to ??= 12;
+
+const list: FretNote[] = fretboardNotes({ root, scale, notes, from, to });
+const hasOpen = from === 0;
+const first = Math.max(from, 1);
+const n = to - first + 1;
+const INLAYS = [3, 5, 7, 9, 15, 17, 19, 21];
+const frets = Array.from({ length: n }, (_, i) => first + i);
+const label = `${title ?? `${root} 指板圖`}，第 ${from} 到 ${to} 格：` + list.map((x) => `${x.string} 弦 ${x.fret} 格 ${x.name}`).join('、');
+
+// ── horizontal geometry ──
+const hC = n <= 6 ? 72 : Math.max(44, Math.round(432 / n));
+const hX0 = 34 + (hasOpen ? 30 : 0);
+const hY0 = 20;
+const hG = 30;
+const hW = hX0 + n * hC + 14;
+const hH = hY0 + 5 * hG + 34;
+const hx = (f: number) => (f === 0 ? hX0 - 16 : hX0 + (f - first + 0.5) * hC);
+const hy = (s: number) => hY0 + (s - 1) * hG;
+
+// ── vertical geometry ──
+const vC = n <= 6 ? 54 : 44;
+const vX0 = 40;
+const vY0 = 34 + (hasOpen ? 30 : 0);
+const vG = 38;
+const vW = vX0 + 5 * vG + 20;
+const vH = vY0 + n * vC + 10;
+const vx = (s: number) => vX0 + (6 - s) * vG;
+const vy = (f: number) => (f === 0 ? vY0 - 17 : vY0 + (f - first + 0.5) * vC);
+---
+
+<figure class="figure fretboard" data-label={show}>
+  <div class="fig-head">
+    {title && <span class="fig-title">{title}</span>}
+    <div class="toggle" role="group" aria-label="顯示方式">
+      <button type="button" data-fb-show="name" aria-pressed={show === 'name' ? 'true' : 'false'}>音名</button>
+      <button type="button" data-fb-show="interval" aria-pressed={show === 'interval' ? 'true' : 'false'}>音程</button>
+    </div>
+  </div>
+
+  <div class="fb-h">
+    <svg class="dg" viewBox={`0 0 ${hW} ${hH}`} role="img" aria-label={label} style={`max-width:${Math.min(hW * 1.25, 640)}px`}>
+      {frets.filter((f) => INLAYS.includes(f)).map((f) => <circle class="inlay" cx={hx(f)} cy={hY0 + 2.5 * hG} r="6" />)}
+      {frets.includes(12) && [1.5, 3.5].map((k) => <circle class="inlay" cx={hx(12)} cy={hY0 + k * hG} r="6" />)}
+      {first === 1
+        ? <rect class="nut" x={hX0 - 3} y={hY0 - 1} width="6" height={5 * hG + 2} />
+        : <line class="fret" x1={hX0} y1={hY0} x2={hX0} y2={hY0 + 5 * hG} />}
+      {frets.map((f) => <line class="fret" x1={hX0 + (f - first + 1) * hC} y1={hY0} x2={hX0 + (f - first + 1) * hC} y2={hY0 + 5 * hG} />)}
+      {[1, 2, 3, 4, 5, 6].map((s) => (
+        <>
+          <line class="str" x1={hasOpen ? hX0 - 30 : hX0} y1={hy(s)} x2={hX0 + n * hC} y2={hy(s)} stroke-width={1 + (s - 1) * 0.35} />
+          <text class="lbl" x={(hasOpen ? hX0 - 30 : hX0) - 14} y={hy(s)} text-anchor="middle" dominant-baseline="central">{STRING_NAMES[s]}</text>
+        </>
+      ))}
+      {frets.map((f) => <text class="lbl" x={hx(f)} y={hY0 + 5 * hG + 24} text-anchor="middle">{f}</text>)}
+      {list.map((x) => (
+        <g class:list={['note', { root: x.isRoot }]}>
+          <circle cx={hx(x.fret)} cy={hy(x.string)} r="13" />
+          <text class="t-name" x={hx(x.fret)} y={hy(x.string)}>{x.name}</text>
+          <text class="t-iv" x={hx(x.fret)} y={hy(x.string)}>{x.interval}</text>
+        </g>
+      ))}
+    </svg>
+  </div>
+
+  <div class="fb-v">
+    <svg class="dg" viewBox={`0 0 ${vW} ${vH}`} role="img" aria-label={label} style={`max-width:${Math.round(vW * 1.1)}px`}>
+      {frets.filter((f) => INLAYS.includes(f)).map((f) => <circle class="inlay" cx={vX0 + 2.5 * vG} cy={vy(f)} r="6" />)}
+      {frets.includes(12) && [1.5, 3.5].map((k) => <circle class="inlay" cx={vX0 + k * vG} cy={vy(12)} r="6" />)}
+      {first === 1
+        ? <rect class="nut" x={vX0 - 1} y={vY0 - 3} width={5 * vG + 2} height="6" />
+        : <line class="fret" x1={vX0} y1={vY0} x2={vX0 + 5 * vG} y2={vY0} />}
+      {frets.map((f) => <line class="fret" x1={vX0} y1={vY0 + (f - first + 1) * vC} x2={vX0 + 5 * vG} y2={vY0 + (f - first + 1) * vC} />)}
+      {[1, 2, 3, 4, 5, 6].map((s) => (
+        <>
+          <line class="str" x1={vx(s)} y1={hasOpen ? vY0 - 30 : vY0} x2={vx(s)} y2={vY0 + n * vC} stroke-width={1 + (s - 1) * 0.35} />
+          <text class="lbl" x={vx(s)} y={(hasOpen ? vY0 - 30 : vY0) - 12} text-anchor="middle">{STRING_NAMES[s]}</text>
+        </>
+      ))}
+      {frets.map((f) => <text class="lbl" x={vX0 - 24} y={vy(f)} text-anchor="middle" dominant-baseline="central">{f}</text>)}
+      {list.map((x) => (
+        <g class:list={['note', { root: x.isRoot }]}>
+          <circle cx={vx(x.string)} cy={vy(x.fret)} r="15" />
+          <text class="t-name" x={vx(x.string)} y={vy(x.fret)}>{x.name}</text>
+          <text class="t-iv" x={vx(x.string)} y={vy(x.fret)}>{x.interval}</text>
+        </g>
+      ))}
+    </svg>
+  </div>
+
+  {caption && <figcaption class="fig-cap">{caption}</figcaption>}
+</figure>
+
+<style>
+  .fretboard { container-type: inline-size; }
+  .fb-v { display: none; }
+  @container (max-width: 480px) {
+    .fb-h { display: none; }
+    .fb-v { display: block; }
+  }
+</style>
+
+<script>
+  document.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-fb-show]');
+    if (!btn) return;
+    const fig = btn.closest<HTMLElement>('.fretboard');
+    if (!fig) return;
+    fig.dataset.label = btn.dataset.fbShow;
+    fig.querySelectorAll('[data-fb-show]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+  });
+</script>

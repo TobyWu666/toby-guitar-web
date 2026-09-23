@@ -1,0 +1,68 @@
+---
+/** 課程列表：依月份分組，可以用分類篩選。 */
+import LessonCard from './LessonCard.astro';
+import { CATEGORIES } from '@/data/site';
+import { monthKey, type Lesson } from '@/lib/content';
+
+interface Props {
+  lessons: Lesson[];
+  filters?: boolean;
+}
+const { lessons, filters = true } = Astro.props;
+const months: { key: string; items: Lesson[] }[] = [];
+for (const l of lessons) {
+  const key = monthKey(l.data.date);
+  const last = months.at(-1);
+  if (last?.key === key) last.items.push(l);
+  else months.push({ key, items: [l] });
+}
+---
+
+<div class="lesson-list" data-lesson-list>
+  {filters && (
+    <div class="filters" role="group" aria-label="依分類篩選">
+      <button type="button" data-filter="all" aria-pressed="true">全部</button>
+      {Object.entries(CATEGORIES).map(([k, v]) => <button type="button" data-filter={k} aria-pressed="false">{v.name}</button>)}
+    </div>
+  )}
+  {months.map((m) => (
+    <section class="month-group">
+      <h3 class="month">{m.key}</h3>
+      <ol class="cards">{m.items.map((l) => <LessonCard lesson={l} />)}</ol>
+    </section>
+  ))}
+  <p class="empty" hidden>這個分類還沒有課。</p>
+</div>
+
+<style>
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 6px; }
+  .filters button { font-size: 14px; padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; }
+  .filters button:hover { color: var(--text); }
+  .filters button[aria-pressed='true'] { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .cards { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+  @media (max-width: 720px) { .cards { grid-template-columns: 1fr; } }
+  .empty { color: var(--muted); }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-lesson-list]').forEach((root) => {
+    root.querySelectorAll<HTMLButtonElement>('[data-filter]').forEach((btn) =>
+      btn.addEventListener('click', () => {
+        const f = btn.dataset.filter!;
+        root.querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        let any = false;
+        root.querySelectorAll<HTMLElement>('.month-group').forEach((g) => {
+          let shown = 0;
+          g.querySelectorAll<HTMLElement>('.lesson-card').forEach((c) => {
+            const ok = f === 'all' || (c.dataset.cats ?? '').split(' ').includes(f);
+            c.hidden = !ok;
+            if (ok) shown++;
+          });
+          g.hidden = shown === 0;
+          any ||= shown > 0;
+        });
+        root.querySelector<HTMLElement>('.empty')!.hidden = any;
+      }),
+    );
+  });
+</script>

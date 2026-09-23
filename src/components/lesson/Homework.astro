@@ -1,0 +1,62 @@
+---
+/** 作業清單。學生勾選的狀態存在自己的瀏覽器裡。 */
+interface Props {
+  items: string[];
+  lesson: number;
+  label?: string;
+}
+const { items, lesson, label } = Astro.props;
+---
+
+<div class="card homework" data-homework={lesson}>
+  {label && <p class="card-label">{label}</p>}
+  <ul class="checklist">
+    {items.map((t, i) => (
+      <li>
+        <label><input type="checkbox" data-i={i} /><span>{t}</span></label>
+      </li>
+    ))}
+  </ul>
+  <slot />
+</div>
+
+<style>
+  .checklist { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+  .checklist li { margin: 0; }
+  .checklist label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; line-height: 1.55; font-size: 15px; color: var(--text); }
+  .checklist input {
+    appearance: none;
+    -webkit-appearance: none;
+    flex: none;
+    width: 19px;
+    height: 19px;
+    margin: 2px 0 0;
+    border: 2px solid var(--line-strong);
+    border-radius: 5px;
+    display: grid;
+    place-content: center;
+    cursor: pointer;
+    background: var(--bg);
+  }
+  .checklist input:checked { background: var(--accent); border-color: var(--accent); }
+  .checklist input:checked::after { content: ''; width: 9px; height: 5px; border-left: 2px solid var(--accent-ink); border-bottom: 2px solid var(--accent-ink); transform: translateY(-1px) rotate(-45deg); }
+  .checklist input:checked + span { color: var(--muted); text-decoration: line-through; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-homework]').forEach((box) => {
+    const key = `hw-${box.dataset.homework}`;
+    let done: number[] = [];
+    try { done = JSON.parse(localStorage.getItem(key) ?? '[]'); } catch {}
+    const inputs = [...box.querySelectorAll<HTMLInputElement>('input[type=checkbox]')];
+    inputs.forEach((el) => {
+      el.checked = done.includes(Number(el.dataset.i));
+      el.addEventListener('change', () => {
+        const now = inputs.filter((x) => x.checked).map((x) => Number(x.dataset.i));
+        try { localStorage.setItem(key, JSON.stringify(now)); } catch {}
+        // 同一頁可能有兩份同一堂的作業（首頁 + 內文），保持同步
+        document.querySelectorAll<HTMLInputElement>(`[data-homework="${box.dataset.homework}"] input[data-i="${el.dataset.i}"]`).forEach((o) => (o.checked = el.checked));
+      });
+    });
+  });
+</script>

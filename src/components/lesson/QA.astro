@@ -1,0 +1,20 @@
+---
+/** 同學的問題：<QA q="五聲音階和藍調音階差在哪？">藍調音階多了一個 ♭5。</QA> */
+interface Props {
+  q: string;
+}
+const { q } = Astro.props;
+---
+
+<div class="qa">
+  <p class="qa-q"><span aria-hidden="true">Q</span>{q}</p>
+  <div class="qa-a"><slot /></div>
+</div>
+
+<style>
+  .qa { margin: 18px 0; }
+  .qa-q { font-weight: 700; color: var(--text) !important; margin: 0 0 4px !important; display: flex; gap: 10px; }
+  .qa-q span { font-family: var(--font-head); font-weight: 400; color: var(--accent); }
+  .qa-a { padding-left: 24px; }
+  .qa-a :global(p:last-child) { margin-bottom: 0; }
+</style>

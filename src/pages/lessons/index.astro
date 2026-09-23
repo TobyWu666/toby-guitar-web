@@ -1,0 +1,22 @@
+---
+import Base from '@/layouts/Base.astro';
+import LessonList from '@/components/LessonList.astro';
+import { getLessons } from '@/lib/content';
+
+const lessons = await getLessons();
+---
+
+<Base title="所有課程" description={`全部 ${lessons.length} 堂課的筆記，依時間排列，可以用分類篩選。`}>
+  <div class="wrap">
+    <header class="page-head">
+      <p class="kicker">課程</p>
+      <h1>所有<span class="mark">課程</span></h1>
+      <p class="lede">共 {lessons.length} 堂，最新的在最上面。找不到的話，按右上角搜尋（或鍵盤 ⌘K）。</p>
+    </header>
+    <LessonList lessons={lessons} />
+  </div>
+</Base>
+
+<style>
+  .page-head { padding-block: 44px 8px; }
+</style>

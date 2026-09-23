@@ -1,0 +1,73 @@
+---
+/**
+ * TAB 譜。
+ *
+ *   <Tab seq="6/5 6/8 5/5 5/7 | 4/5 4/7" title="上行" />   ← 依序彈的位置（弦/格），| 是小節線
+ *   <Tab seq="5/3+4/2+2/1 …" />                            ← 用 + 表示同時彈（和弦、雙音）
+ *   <Tab raw={`e|---0---|…`} />                           ← 直接貼現成的 TAB
+ */
+import { STRING_NAMES } from '@/lib/music';
+
+interface Props {
+  seq?: string;
+  raw?: string;
+  title?: string;
+  caption?: string;
+}
+const { seq, raw = '', title, caption } = Astro.props;
+const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+let html = esc(raw);
+if (seq) {
+  type Cell = null | Map<number, number>; // null = 小節線
+  const cells: Cell[] = seq.split(/\s+/).filter(Boolean).map((tok) => {
+    if (tok === '|') return null;
+    const notes = new Map<number, number>();
+    for (const part of tok.split('+')) {
+      const m = part.match(/^([1-6])\/(\d+)$/);
+      if (!m) throw new Error(`Tab 看不懂「${part}」（格式：弦/格，例如 6/5）`);
+      notes.set(Number(m[1]), Number(m[2]));
+    }
+    return notes;
+  });
+  const width = Math.max(1, ...cells.flatMap((c) => (c ? [...c.values()].map((f) => String(f).length) : [])));
+  html = [1, 2, 3, 4, 5, 6]
+    .map((s) => {
+      const body = cells
+        .map((c) => {
+          if (!c) return '|';
+          const f = c.get(s);
+          if (f === undefined) return '-'.repeat(width + 2);
+          return `-<em>${f}</em>${'-'.repeat(width + 1 - String(f).length)}`;
+        })
+        .join('');
+      return `<span class="sn">${STRING_NAMES[s]}</span>|-${body}-|`;
+    })
+    .join('\n');
+}
+---
+
+<figure class="figure tab-fig">
+  {title && <div class="fig-head"><span class="fig-title">{title}</span></div>}
+  <pre class="tab" aria-label={title ?? 'TAB 譜'} set:html={html} />
+  {caption && <figcaption class="fig-cap">{caption}</figcaption>}
+  <slot />
+</figure>
+
+<style>
+  .tab {
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--muted);
+    background: var(--bg);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 0;
+    white-space: pre;
+  }
+  .tab :global(em) { font-style: normal; color: var(--text); font-weight: 600; }
+  .tab :global(.sn) { color: var(--accent); }
+</style>

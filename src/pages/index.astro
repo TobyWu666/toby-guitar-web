@@ -1,0 +1,99 @@
+---
+import { getEntries } from 'astro:content';
+import Base from '@/layouts/Base.astro';
+import TopicChip from '@/components/TopicChip.astro';
+import LessonList from '@/components/LessonList.astro';
+import Homework from '@/components/lesson/Homework.astro';
+import { CATEGORIES } from '@/data/site';
+import { fmtLong, getLessons, getTopics, lessonsByTopic, lessonUrl, topicUrl } from '@/lib/content';
+
+const lessons = await getLessons();
+const topics = await getTopics();
+const counts = lessonsByTopic(lessons);
+const latest = lessons[0];
+const recent = lessons.slice(0, 6);
+
+function titleHtml(title: string, highlight?: string) {
+  if (!highlight || !title.includes(highlight)) return title;
+  return title.replace(highlight, `<span class="mark">${highlight}</span>`);
+}
+const latestTopics = latest ? await getEntries(latest.data.topics) : [];
+const cats = Object.entries(CATEGORIES).map(([key, c]) => {
+  const ts = topics.filter((t) => t.data.category === key);
+  return { key, name: c.name, topics: ts, taught: ts.filter((t) => counts.has(t.id)).length };
+}).filter((c) => c.topics.length > 0);
+---
+
+<Base>
+  <div class="wrap">
+    {latest ? (
+      <section class="hero">
+        <div>
+          <p class="kicker">最新一堂 · 第 {latest.data.lesson} 堂 · {fmtLong(latest.data.date)}</p>
+          <h1 set:html={titleHtml(latest.data.title, latest.data.highlight)} />
+          <p class="lede">{latest.data.summary}</p>
+          <div class="chips">{latestTopics.map((t) => <TopicChip id={t.id} />)}</div>
+          <div class="actions">
+            <a class="btn primary" href={lessonUrl(latest)}>看這堂筆記 →</a>
+            <a class="btn ghost" href="/lessons/">所有課程</a>
+          </div>
+        </div>
+        {latest.data.homework.length > 0 && (
+          <Homework items={latest.data.homework} lesson={latest.data.lesson} label={`本週作業 · 第 ${latest.data.lesson} 堂`} />
+        )}
+      </section>
+    ) : (
+      <section class="hero"><h1>第一堂課的筆記<span class="mark">快來了</span></h1></section>
+    )}
+
+    {recent.length > 0 && (
+      <section class="sec">
+        <div class="sec-head">
+          <h2>最近的課</h2>
+          <a class="link" href="/lessons/">全部 {lessons.length} 堂 →</a>
+        </div>
+        <LessonList lessons={recent} filters={false} />
+      </section>
+    )}
+
+    <section class="sec">
+      <div class="sec-head">
+        <h2>知識地圖</h2>
+        <a class="link" href="/topics/">看完整地圖 →</a>
+      </div>
+      <div class="cat-grid">
+        {cats.map((c) => (
+          <a class="cat-tile" data-cat={c.key} href={topicUrl(c.topics[0].id)}>
+            <b>{c.name}</b>
+            <span>{c.topics.length} 個知識點 · 已教 {c.taught}</span>
+            <small>{c.topics.map((t) => t.data.name).join('、')}</small>
+          </a>
+        ))}
+      </div>
+    </section>
+  </div>
+</Base>
+
+<style>
+  .hero { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr); gap: 48px; padding-block: 60px 28px; align-items: start; }
+  @media (max-width: 760px) { .hero { grid-template-columns: 1fr; gap: 28px; padding-block: 32px 12px; } }
+  .cat-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 760px) { .cat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  .cat-tile {
+    display: grid;
+    gap: 4px;
+    align-content: start;
+    text-decoration: none;
+    background: var(--surface);
+    border: 2px solid var(--line-strong);
+    border-top: 5px solid var(--c);
+    border-radius: var(--hand);
+    padding: 16px;
+    box-shadow: var(--shadow);
+    transition: transform 0.15s;
+  }
+  .cat-tile:hover { transform: translateY(-2px); }
+  .cat-tile b { font-family: var(--font-head); font-weight: 400; font-size: 21px; color: var(--c); }
+  .cat-tile span { font-size: 13px; color: var(--muted); }
+  .cat-tile small { font-size: 13.5px; color: var(--text-2); line-height: 1.55; }
+</style>

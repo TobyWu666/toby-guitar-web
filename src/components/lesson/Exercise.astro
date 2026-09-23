@@ -1,0 +1,34 @@
+---
+/**
+ * 練習題，答案預設收起來。會自動編號（練習 1、練習 2…）。
+ *
+ *   <Exercise q="把第一指型往上移 2 格，會變成哪個調？">B 小調五聲音階。</Exercise>
+ */
+interface Props {
+  q: string;
+}
+const { q } = Astro.props;
+---
+
+<div class="exercise">
+  <p class="ex-label">練習 </p>
+  <p class="ex-q">{q}</p>
+  <details>
+    <summary>看答案</summary>
+    <div class="ex-a"><slot /></div>
+  </details>
+</div>
+
+<style>
+  .exercise { counter-increment: exercise; margin: 16px 0; border: 2px solid var(--line-strong); border-radius: var(--hand); padding: 16px 18px; background: var(--surface); }
+  .ex-label { font-family: var(--font-head); font-size: 14px; color: var(--accent); margin: 0 0 4px !important; }
+  .ex-label::after { content: counter(exercise); }
+  .ex-q { margin: 0 0 10px !important; color: var(--text) !important; font-weight: 500; }
+  details { border-top: 1px dashed var(--line-strong); padding-top: 10px; }
+  summary { cursor: pointer; color: var(--accent); font-size: 14.5px; list-style: none; width: fit-content; }
+  summary::-webkit-details-marker { display: none; }
+  summary::before { content: '▸ '; }
+  details[open] summary::before { content: '▾ '; }
+  .ex-a { margin-top: 8px; }
+  .ex-a :global(p:last-child) { margin-bottom: 0; }
+</style>

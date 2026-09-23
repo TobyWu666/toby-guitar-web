@@ -1,0 +1,46 @@
+---
+/**
+ * 白板照片，點一下全螢幕放大。
+ *
+ *   import board from './whiteboard.jpg';
+ *   <Whiteboard src={board} alt="A 小調五聲音階板書" caption="課堂板書" />
+ */
+import { Image } from 'astro:assets';
+import type { ImageMetadata } from 'astro';
+
+interface Props {
+  src: ImageMetadata;
+  alt: string;
+  caption?: string;
+}
+const { src, alt, caption } = Astro.props;
+---
+
+<figure class="figure whiteboard" data-wb>
+  <button type="button" class="wb-open" data-wb-open aria-label={`放大：${alt}`}>
+    <Image src={src} alt={alt} widths={[480, 800, 1200]} sizes="(max-width: 760px) 100vw, 720px" loading="lazy" />
+  </button>
+  <figcaption class="fig-cap">{caption ?? '課堂板書'} · 點一下放大</figcaption>
+  <dialog class="wb-dialog" data-wb-dialog aria-label={alt}>
+    <Image src={src} alt={alt} width={Math.min(src.width, 2000)} loading="lazy" />
+    <button type="button" class="wb-close" data-wb-close aria-label="關閉">×</button>
+  </dialog>
+</figure>
+
+<style>
+  .wb-open { display: block; width: 100%; padding: 0; border: 0; background: none; cursor: zoom-in; border-radius: 8px; overflow: hidden; }
+  .wb-open :global(img) { display: block; width: 100%; height: auto; }
+  .wb-dialog { padding: 0; border: 0; background: transparent; max-width: 96vw; max-height: 96vh; overflow: auto; }
+  .wb-dialog::backdrop { background: rgb(0 0 0 / 0.82); }
+  .wb-dialog :global(img) { display: block; max-width: none; width: min(1600px, 180vw); height: auto; cursor: zoom-out; }
+  @media (min-width: 900px) { .wb-dialog :global(img) { width: auto; max-width: 94vw; max-height: 94vh; } }
+  .wb-close { position: fixed; top: calc(12px + env(safe-area-inset-top, 0px)); right: 12px; width: 40px; height: 40px; border-radius: 50%; border: 0; background: rgb(255 255 255 / 0.9); color: #111; font-size: 24px; line-height: 1; cursor: pointer; }
+</style>
+
+<script>
+  document.querySelectorAll<HTMLElement>('[data-wb]').forEach((fig) => {
+    const dialog = fig.querySelector<HTMLDialogElement>('[data-wb-dialog]')!;
+    fig.querySelector('[data-wb-open]')!.addEventListener('click', () => dialog.showModal());
+    dialog.addEventListener('click', () => dialog.close());
+  });
+</script>

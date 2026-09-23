@@ -1,0 +1,12 @@
+---
+import { getEntry } from 'astro:content';
+import { topicUrl } from '@/lib/content';
+
+interface Props {
+  id: string;
+}
+const topic = await getEntry('topics', Astro.props.id);
+if (!topic) throw new Error(`找不到知識點「${Astro.props.id}」，請檢查 src/content/topics/`);
+---
+
+<a class="chip" data-cat={topic.data.category} href={topicUrl(topic.id)}>{topic.data.name}</a>

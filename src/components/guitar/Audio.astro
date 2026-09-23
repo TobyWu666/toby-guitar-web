@@ -1,0 +1,77 @@
+---
+/**
+ * 聲音範例，可以調慢速度跟著練。
+ *
+ *   import demo from './demo.m4a';
+ *   <Audio src={demo} caption="60 BPM 示範" />
+ */
+interface Props {
+  src: string;
+  caption?: string;
+  title?: string;
+}
+const { src, caption, title } = Astro.props;
+---
+
+<figure class="figure audio" data-audio>
+  {title && <div class="fig-head"><span class="fig-title">{title}</span></div>}
+  <audio preload="metadata" src={src}></audio>
+  <div class="player">
+    <button type="button" class="play" data-play aria-label="播放">
+      <svg class="i-play" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5v11l9-5.5z" fill="currentColor"></path></svg>
+      <svg class="i-pause" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 1.5h3v11H3zM8 1.5h3v11H8z" fill="currentColor"></path></svg>
+    </button>
+    <input class="seek" type="range" min="0" max="1000" value="0" aria-label="播放進度" data-seek />
+    <span class="time" data-time>0:00</span>
+    <div class="rates" role="group" aria-label="播放速度">
+      <button type="button" data-rate="0.5">0.5×</button>
+      <button type="button" data-rate="0.75">0.75×</button>
+      <button type="button" data-rate="1" aria-pressed="true">1×</button>
+    </div>
+  </div>
+  {caption && <figcaption class="fig-cap">{caption}</figcaption>}
+</figure>
+
+<style>
+  .player { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .play { flex: none; width: 42px; height: 42px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink); display: grid; place-content: center; cursor: pointer; }
+  .play svg { width: 14px; height: 14px; }
+  .i-pause, .playing .i-play { display: none; }
+  .playing .i-pause { display: block; }
+  .seek { flex: 1 1 160px; min-width: 0; accent-color: var(--accent); }
+  .time { font: 500 12.5px var(--font-mono); color: var(--muted); min-width: 3.2em; }
+  .rates { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; background: var(--bg); }
+  .rates button { font: 500 12px var(--font-mono); border: 0; background: none; color: var(--muted); padding: 3px 9px; border-radius: 999px; cursor: pointer; }
+  .rates button[aria-pressed='true'] { background: var(--text); color: var(--bg); }
+</style>
+
+<script>
+  const fmt = (t: number) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  document.querySelectorAll<HTMLElement>('[data-audio]').forEach((box) => {
+    const audio = box.querySelector('audio')!;
+    const seek = box.querySelector<HTMLInputElement>('[data-seek]')!;
+    const time = box.querySelector<HTMLElement>('[data-time]')!;
+    const play = box.querySelector<HTMLButtonElement>('[data-play]')!;
+    const sync = () => {
+      if (audio.duration) seek.value = String((audio.currentTime / audio.duration) * 1000);
+      time.textContent = fmt(audio.currentTime || audio.duration || 0);
+    };
+    audio.addEventListener('loadedmetadata', sync);
+    audio.addEventListener('timeupdate', sync);
+    audio.addEventListener('play', () => { box.classList.add('playing'); play.setAttribute('aria-label', '暫停'); });
+    audio.addEventListener('pause', () => { box.classList.remove('playing'); play.setAttribute('aria-label', '播放'); });
+    play.addEventListener('click', () => {
+      if (audio.paused) {
+        document.querySelectorAll('audio').forEach((a) => a !== audio && a.pause());
+        audio.play();
+      } else audio.pause();
+    });
+    seek.addEventListener('input', () => { if (audio.duration) audio.currentTime = (Number(seek.value) / 1000) * audio.duration; });
+    box.querySelectorAll<HTMLButtonElement>('[data-rate]').forEach((b) =>
+      b.addEventListener('click', () => {
+        audio.playbackRate = Number(b.dataset.rate);
+        box.querySelectorAll('[data-rate]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+      }),
+    );
+  });
+</script>
