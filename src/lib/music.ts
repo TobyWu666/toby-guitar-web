@@ -103,13 +103,6 @@ export function fretboardNotes(opts: { root: string; scale?: string; notes?: str
   return out;
 }
 
-/** 和弦按法 "x02010" 或 "x,10,12,12,11,10" → 每條弦（6→1）的格數，null = 不彈 */
-export function parseChordFrets(frets: string): (number | null)[] {
-  const parts = frets.includes(',') ? frets.split(',') : [...frets];
-  if (parts.length !== 6) throw new Error(`和弦按法要有 6 條弦：「${frets}」`);
-  return parts.map((p) => (/^[xX]$/.test(p.trim()) ? null : Number(p)));
-}
-
 export function noteNameAt(string: number, fret: number, root?: string) {
   if (root) return describe(string, fret, parseNote(root), []).name;
   const SHARP = ['C', 'C♯', 'D', 'E♭', 'E', 'F', 'F♯', 'G', 'A♭', 'A', 'B♭', 'B'];
