@@ -1,0 +1,522 @@
+---
+import Base from '@/layouts/Base.astro';
+---
+
+<Base title="和弦圖產生器" description="點一點就畫好和弦按法圖：放按壓點、設定空弦／不彈、指法、起始格與橫按，複製 <Chord> 程式碼或下載 PNG／SVG。">
+  <div class="wrap tool">
+    <p class="kicker">小工具</p>
+    <h1>和弦圖<span class="mark">產生器</span></h1>
+    <p class="lede">在指板上點一點就畫好和弦圖，可以直接複製到課程筆記，或下載成圖片。</p>
+
+    <div class="grid">
+      <section class="card editor" aria-label="編輯區">
+        <div class="pen" role="group" aria-label="點下去時標的手指">
+          <span class="pen-label">手指</span>
+          <div class="toggle">
+            <button type="button" data-pen="" aria-pressed="true" title="不標指法（鍵盤 0）">不標</button>
+            <button type="button" data-pen="1" aria-pressed="false" title="食指（鍵盤 1）">1</button>
+            <button type="button" data-pen="2" aria-pressed="false" title="中指（鍵盤 2）">2</button>
+            <button type="button" data-pen="3" aria-pressed="false" title="無名指（鍵盤 3）">3</button>
+            <button type="button" data-pen="4" aria-pressed="false" title="小指（鍵盤 4）">4</button>
+            <button type="button" data-pen="T" aria-pressed="false" title="拇指（鍵盤 T）">T</button>
+          </div>
+        </div>
+
+        <svg class="dg board" id="board" role="group" aria-label="和弦圖編輯區：點格子放按壓點、點琴枕上方切換空弦／不彈"></svg>
+
+        <div class="pos">
+          <button class="step" type="button" id="base-down" aria-label="起始格往下">−</button>
+          <span>起始格 <b id="base-val">1</b></span>
+          <button class="step" type="button" id="base-up" aria-label="起始格往上">＋</button>
+        </div>
+
+        <ul class="help">
+          <li>點<b>格子</b>放按壓點；再點一次拿掉（換了手指再點 = 改指法）。</li>
+          <li>點琴枕<b>上方</b>切換 ○ 空弦／× 不彈。</li>
+          <li><b>橫按</b>：同一隻手指在同一格按多條弦，就會自動連成一條。</li>
+        </ul>
+      </section>
+
+      <div class="side">
+        <section class="card fields" aria-label="和弦資料">
+          <label>
+            <span>和弦名稱</span>
+            <input id="f-name" type="text" autocomplete="off" spellcheck="false" placeholder="例：Am7" />
+          </label>
+          <label>
+            <span>根音 <small>拼音名用</small></span>
+            <input id="f-root" type="text" autocomplete="off" spellcheck="false" />
+          </label>
+          <label>
+            <span>按法 <small>6→1 弦，x 不彈</small></span>
+            <input id="f-frets" class="mono" type="text" autocomplete="off" spellcheck="false" placeholder="x32010" />
+          </label>
+          <label>
+            <span>指法 <small>0 = 不標</small></span>
+            <input id="f-fingers" class="mono" type="text" autocomplete="off" spellcheck="false" placeholder="x32010" />
+          </label>
+          <p class="err" id="err" role="alert" hidden></p>
+          <div class="row">
+            <button class="btn ghost sm" type="button" id="clear">清除</button>
+          </div>
+        </section>
+
+        <section class="card out" aria-label="輸出">
+          <p class="card-label">網站上的樣子</p>
+          <div class="preview-wrap"><svg class="dg preview" id="preview" role="img"></svg></div>
+
+          <p class="card-label">MDX 程式碼</p>
+          <pre class="code"><code id="code"></code></pre>
+          <div class="row">
+            <button class="btn primary sm" type="button" id="copy-code">複製程式碼</button>
+          </div>
+
+          <p class="card-label">下載圖片</p>
+          <div class="row">
+            <div class="toggle" role="group" aria-label="圖片配色">
+              <button type="button" data-exp-theme="light" aria-pressed="true">白板</button>
+              <button type="button" data-exp-theme="dark" aria-pressed="false">黑板</button>
+            </div>
+            <label class="check"><input type="checkbox" id="exp-transparent" /> 透明背景</label>
+          </div>
+          <div class="row">
+            <button class="btn ghost sm" type="button" id="dl-png">下載 PNG</button>
+            <button class="btn ghost sm" type="button" id="dl-svg">下載 SVG</button>
+            <button class="btn ghost sm" type="button" id="copy-png" hidden>複製圖片</button>
+          </div>
+        </section>
+
+        <details class="card load">
+          <summary>貼上程式碼載入</summary>
+          <textarea id="load-src" rows="3" spellcheck="false" placeholder={'<Chord name="F" frets="133211" fingers="134211" />'}></textarea>
+          <div class="row">
+            <button class="btn ghost sm" type="button" id="load">載入</button>
+          </div>
+        </details>
+      </div>
+    </div>
+    <p class="status" id="status" role="status" aria-live="polite"></p>
+  </div>
+</Base>
+
+<style>
+  .tool { padding-block: 40px 0; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 22px; align-items: start; margin-top: 8px; }
+  .side { display: grid; gap: 22px; }
+  .editor { display: flex; flex-direction: column; align-items: center; gap: 14px; }
+  .pen { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+  .pen-label { font-family: var(--font-head); color: var(--muted); font-size: 14px; }
+  .pen .toggle button { min-width: 38px; padding: 6px 10px; font-size: 14px; }
+  .board { width: min(100%, 360px); touch-action: manipulation; user-select: none; -webkit-user-select: none; }
+  .board :global(.hit) { fill: transparent; cursor: pointer; }
+  @media (hover: hover) {
+    .board :global(.hit:hover) { fill: color-mix(in srgb, var(--accent) 16%, transparent); }
+  }
+  .pos { display: flex; align-items: center; gap: 12px; color: var(--text-2); font-size: 15px; }
+  .pos b { font-family: var(--font-mono); color: var(--text); display: inline-block; min-width: 2ch; text-align: center; }
+  .step { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-strong); background: var(--surface); color: var(--text); font-size: 18px; cursor: pointer; }
+  .step:hover:not(:disabled) { border-color: var(--text); }
+  .step:disabled { opacity: 0.35; cursor: default; }
+  .help { margin: 0; padding-left: 1.2em; color: var(--muted); font-size: 13.5px; line-height: 1.7; align-self: stretch; }
+  .help b { color: var(--text-2); font-weight: 500; }
+
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 14px; }
+  .fields label { display: grid; gap: 4px; font-size: 14px; color: var(--text-2); }
+  .fields small { color: var(--muted); font-size: 12px; }
+  .fields input, .load textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--line-strong);
+    border-radius: 8px;
+    padding: 7px 10px;
+  }
+  .fields input:focus, .load textarea:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .fields input[aria-invalid='true'] { border-color: var(--cat-tech); }
+  .mono, .load textarea { font-family: var(--font-mono) !important; }
+  .err { grid-column: 1 / -1; margin: 0; color: var(--cat-tech); font-size: 13.5px; }
+  .fields .row { grid-column: 1 / -1; }
+
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .btn.sm { font-size: 14px; padding: 7px 16px; }
+  .check { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--text-2); cursor: pointer; }
+  .out { display: grid; gap: 10px; }
+  .out .card-label { margin: 6px 0 0; }
+  .out .card-label:first-child { margin-top: 0; }
+  .preview-wrap { display: flex; justify-content: center; }
+  .preview { width: 170px; }
+  .code {
+    margin: 0;
+    font: 13.5px/1.6 var(--font-mono);
+    background: var(--surface-2);
+    color: var(--text);
+    border-radius: 8px;
+    padding: 10px 12px;
+    white-space: pre-wrap;
+    word-break: break-all;
+  }
+  .load summary { cursor: pointer; font-family: var(--font-head); color: var(--text-2); }
+  .load[open] summary { margin-bottom: 10px; }
+  .load textarea { resize: vertical; font-size: 14px; margin-bottom: 10px; }
+  .status { min-height: 1.5em; margin: 14px 0 0; color: var(--accent); font-size: 14px; text-align: center; }
+
+  @media (max-width: 860px) {
+    .grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 420px) {
+    .fields { grid-template-columns: 1fr; }
+    .card { padding: 16px; }
+  }
+</style>
+
+<script>
+  import { CHORD_GEOM, autoBase, chordDiagram, parseChordFingers, parseChordFrets, type Fingers, type Frets } from '@/lib/chord';
+  import { parseNote } from '@/lib/music';
+
+  const { X0, Y0, G, C } = CHORD_GEOM;
+  const EDIT_ROWS = 5;
+  const MAX_FRET = 22;
+
+  const $ = <T extends Element = HTMLElement>(sel: string) => document.querySelector(sel) as T;
+  const board = $<SVGSVGElement>('#board');
+  const preview = $<SVGSVGElement>('#preview');
+  const fName = $<HTMLInputElement>('#f-name');
+  const fRoot = $<HTMLInputElement>('#f-root');
+  const fFrets = $<HTMLInputElement>('#f-frets');
+  const fFingers = $<HTMLInputElement>('#f-fingers');
+  const errEl = $('#err');
+  const codeEl = $('#code');
+  const statusEl = $('#status');
+  const baseVal = $('#base-val');
+  const baseDown = $<HTMLButtonElement>('#base-down');
+  const baseUp = $<HTMLButtonElement>('#base-up');
+
+  const state = {
+    name: 'C',
+    root: '',
+    frets: [null, 3, 2, 0, 1, 0] as Frets,
+    fingers: [null, '3', '2', null, '1', null] as Fingers,
+    base: 1,
+    pen: '' as string,
+    expTheme: 'light' as 'light' | 'dark',
+  };
+
+  const pressed = () => state.frets.filter((f): f is number => f !== null && f > 0);
+
+  /** 名稱開頭的音名當根音（A/C♯ → A、Bbmaj7 → Bb） */
+  function rootOf(name: string) {
+    const m = name.trim().match(/^([A-Ga-g])([#b♯♭]?)/);
+    return m ? m[1].toUpperCase() + m[2] : '';
+  }
+  function effectiveRoot() {
+    const r = state.root.trim() || rootOf(state.name);
+    if (!r) return undefined;
+    try {
+      parseNote(r);
+      return r;
+    } catch {
+      return undefined;
+    }
+  }
+
+  function fretsText(fs: Frets) {
+    const wide = fs.some((f) => f !== null && f >= 10);
+    return fs.map((f) => (f === null ? 'x' : String(f))).join(wide ? ',' : '');
+  }
+  function fingersText() {
+    const wide = state.frets.some((f) => f !== null && f >= 10);
+    return state.frets.map((f, i) => (f === null ? 'x' : f > 0 && state.fingers[i] ? state.fingers[i] : '0')).join(wide ? ',' : '');
+  }
+  const hasFingers = () => state.frets.some((f, i) => f !== null && f > 0 && state.fingers[i]);
+
+  function snippet() {
+    const attr = (k: string, v: string) => ` ${k}="${v.replace(/"/g, '')}"`;
+    const root = effectiveRoot();
+    let s = '<Chord' + attr('name', state.name.trim());
+    if (root) s += attr('root', root);
+    s += attr('frets', fretsText(state.frets));
+    if (hasFingers()) s += attr('fingers', fingersText());
+    if (state.base !== autoBase(state.frets)) s += ` base={${state.base}}`;
+    return s + ' />';
+  }
+
+  function drawBoard() {
+    const d = chordDiagram({ name: state.name, frets: state.frets, fingers: state.fingers, root: effectiveRoot(), base: state.base, minRows: EDIT_ROWS });
+    const hits: string[] = [];
+    for (let i = 0; i < 6; i++) {
+      const hx = X0 + i * G - G / 2;
+      hits.push(`<rect class="hit" data-s="${i}" data-f="-1" x="${hx}" y="24" width="${G}" height="${Y0 - 26}"><title>${6 - i} 弦：空弦／不彈</title></rect>`);
+      for (let k = 0; k < d.rows; k++)
+        hits.push(`<rect class="hit" data-s="${i}" data-f="${d.base + k}" x="${hx}" y="${Y0 + k * C}" width="${G}" height="${C}"><title>${6 - i} 弦第 ${d.base + k} 格</title></rect>`);
+    }
+    board.setAttribute('viewBox', d.viewBox);
+    board.innerHTML = d.body + `<g>${hits.join('')}</g>`;
+  }
+
+  function drawPreview() {
+    const d = chordDiagram({ name: state.name, frets: state.frets, fingers: state.fingers, root: effectiveRoot(), base: state.base });
+    preview.setAttribute('viewBox', d.viewBox);
+    preview.setAttribute('aria-label', d.label);
+    preview.innerHTML = d.body;
+  }
+
+  function syncInputs(except?: HTMLInputElement) {
+    if (except !== fName) fName.value = state.name;
+    if (except !== fRoot) fRoot.value = state.root;
+    if (except !== fFrets) fFrets.value = fretsText(state.frets);
+    if (except !== fFingers) fFingers.value = fingersText();
+    fRoot.placeholder = rootOf(state.name) ? `自動：${rootOf(state.name)}` : '例：Bb';
+    for (const el of [fFrets, fFingers]) if (el !== except) el.removeAttribute('aria-invalid');
+  }
+
+  function render(except?: HTMLInputElement) {
+    const minF = Math.min(...pressed());
+    baseVal.textContent = String(state.base);
+    baseDown.disabled = state.base <= 1;
+    baseUp.disabled = state.base >= MAX_FRET - EDIT_ROWS + 1 || state.base + 1 > minF;
+    drawBoard();
+    drawPreview();
+    codeEl.textContent = snippet();
+    syncInputs(except);
+    const p = new URLSearchParams({ name: state.name, frets: fretsText(state.frets) });
+    if (hasFingers()) p.set('fingers', fingersText());
+    if (state.root.trim()) p.set('root', state.root.trim());
+    if (state.base !== autoBase(state.frets)) p.set('base', String(state.base));
+    history.replaceState(null, '', '#' + p.toString());
+  }
+
+  let statusTimer = 0;
+  function say(msg: string) {
+    statusEl.textContent = msg;
+    clearTimeout(statusTimer);
+    statusTimer = window.setTimeout(() => (statusEl.textContent = ''), 2500);
+  }
+  function showError(msg = '') {
+    errEl.textContent = msg;
+    errEl.hidden = !msg;
+  }
+
+  /** 換了一組按法（打字或載入）時，起始格跟著跳到能看到所有按壓點的位置 */
+  function setShape(frets: Frets, fingers?: Fingers, base?: number) {
+    state.frets = frets;
+    if (fingers) state.fingers = fingers;
+    const minF = Math.min(...pressed());
+    state.base = Math.max(1, Math.min(base ?? autoBase(frets), minF, MAX_FRET));
+  }
+
+  board.addEventListener('click', (e) => {
+    const t = (e.target as Element).closest<SVGRectElement>('.hit');
+    if (!t) return;
+    const s = Number(t.dataset.s);
+    const f = Number(t.dataset.f);
+    if (f < 0) {
+      state.frets[s] = state.frets[s] === 0 ? null : 0;
+      state.fingers[s] = null;
+    } else if (state.frets[s] === f && (state.fingers[s] ?? '') === state.pen) {
+      state.frets[s] = 0;
+      state.fingers[s] = null;
+    } else {
+      state.frets[s] = f;
+      state.fingers[s] = state.pen || null;
+    }
+    showError();
+    render();
+  });
+
+  function setPen(pen: string) {
+    state.pen = pen;
+    document.querySelectorAll<HTMLButtonElement>('[data-pen]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.pen === pen)));
+  }
+  document.querySelectorAll<HTMLButtonElement>('[data-pen]').forEach((b) => b.addEventListener('click', () => setPen(b.dataset.pen ?? '')));
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target as HTMLElement).tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || e.metaKey || e.ctrlKey || e.altKey) return;
+    const k = e.key.toUpperCase();
+    if (k === '0') setPen('');
+    else if (/^[1-4T]$/.test(k)) setPen(k);
+  });
+
+  baseDown.addEventListener('click', () => {
+    state.base = Math.max(1, state.base - 1);
+    render();
+  });
+  baseUp.addEventListener('click', () => {
+    state.base += 1;
+    render();
+  });
+
+  fName.addEventListener('input', () => {
+    state.name = fName.value;
+    render(fName);
+  });
+  fRoot.addEventListener('input', () => {
+    state.root = fRoot.value;
+    render(fRoot);
+  });
+  fFrets.addEventListener('input', () => {
+    try {
+      setShape(parseChordFrets(fFrets.value));
+      fFrets.removeAttribute('aria-invalid');
+      showError();
+      render(fFrets);
+    } catch (err) {
+      fFrets.setAttribute('aria-invalid', 'true');
+      showError((err as Error).message);
+    }
+  });
+  fFingers.addEventListener('input', () => {
+    try {
+      state.fingers = parseChordFingers(fFingers.value);
+      fFingers.removeAttribute('aria-invalid');
+      showError();
+      render(fFingers);
+    } catch (err) {
+      fFingers.setAttribute('aria-invalid', 'true');
+      showError((err as Error).message);
+    }
+  });
+
+  $('#clear').addEventListener('click', () => {
+    state.name = '';
+    state.root = '';
+    setShape([0, 0, 0, 0, 0, 0], [null, null, null, null, null, null], 1);
+    showError();
+    render();
+    fName.focus();
+  });
+
+  /** 從 <Chord …/> 程式碼或網址 hash 讀回來 */
+  function load(attrs: Record<string, string>) {
+    if (!attrs.frets) throw new Error('找不到 frets（按法）');
+    const frets = parseChordFrets(attrs.frets);
+    const fingers = attrs.fingers ? parseChordFingers(attrs.fingers) : frets.map(() => null);
+    state.name = attrs.name ?? '';
+    state.root = attrs.root && attrs.root !== rootOf(state.name) ? attrs.root : '';
+    setShape(frets, fingers, attrs.base ? Number(attrs.base) : undefined);
+  }
+  function parseSnippet(src: string) {
+    const attrs: Record<string, string> = {};
+    for (const m of src.matchAll(/(\w+)\s*=\s*(?:"([^"]*)"|'([^']*)'|\{\s*['"]?([^}'"]*)['"]?\s*\})/g)) attrs[m[1]] = (m[2] ?? m[3] ?? m[4]).trim();
+    return attrs;
+  }
+  $('#load').addEventListener('click', () => {
+    try {
+      load(parseSnippet($<HTMLTextAreaElement>('#load-src').value));
+      showError();
+      render();
+      say('已載入');
+    } catch (err) {
+      showError((err as Error).message);
+    }
+  });
+
+  $('#copy-code').addEventListener('click', async () => {
+    try {
+      await navigator.clipboard.writeText(snippet());
+      say('已複製程式碼，貼到課程的 .mdx 裡就好');
+    } catch {
+      getSelection()?.selectAllChildren(codeEl);
+      say('請按 ⌘C／Ctrl+C 複製選取的程式碼');
+    }
+  });
+
+  // ── 匯出：把網站樣式（token）算成實際顏色寫進 SVG，單獨開也長得一樣 ──
+  document.querySelectorAll<HTMLButtonElement>('[data-exp-theme]').forEach((b) =>
+    b.addEventListener('click', () => {
+      state.expTheme = b.dataset.expTheme as 'light' | 'dark';
+      document.querySelectorAll('[data-exp-theme]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)));
+    }),
+  );
+  const PROPS = ['fill', 'stroke', 'stroke-width', 'font-family', 'font-size', 'font-weight', 'text-anchor', 'dominant-baseline'];
+  const PAD = 10;
+
+  function exportSvg() {
+    const root = document.documentElement;
+    const prevTheme = root.dataset.theme;
+    root.dataset.theme = state.expTheme;
+    const clone = preview.cloneNode(true) as SVGSVGElement;
+    const src = [...preview.querySelectorAll('*')];
+    const dst = [...clone.querySelectorAll('*')];
+    src.forEach((el, i) => {
+      const cs = getComputedStyle(el);
+      (dst[i] as SVGElement).setAttribute('style', PROPS.map((p) => `${p}:${cs.getPropertyValue(p)}`).join(';'));
+    });
+    const bg = getComputedStyle(root).getPropertyValue('--surface').trim();
+    if (prevTheme) root.dataset.theme = prevTheme;
+    else delete root.dataset.theme;
+
+    const [, , w, h] = preview.getAttribute('viewBox')!.split(' ').map(Number);
+    const W = w + PAD * 2;
+    const H = h + PAD * 2;
+    clone.removeAttribute('id');
+    clone.removeAttribute('class');
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+    clone.setAttribute('viewBox', `${-PAD} ${-PAD} ${W} ${H}`);
+    clone.setAttribute('width', String(W));
+    clone.setAttribute('height', String(H));
+    if (!$<HTMLInputElement>('#exp-transparent').checked) clone.insertAdjacentHTML('afterbegin', `<rect x="${-PAD}" y="${-PAD}" width="${W}" height="${H}" fill="${bg}"></rect>`);
+    return { svg: new XMLSerializer().serializeToString(clone), W, H };
+  }
+
+  function pngBlob(scale = 4) {
+    const { svg, W, H } = exportSvg();
+    return new Promise<Blob>((resolve, reject) => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = W * scale;
+        canvas.height = H * scale;
+        canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        canvas.toBlob((b) => (b ? resolve(b) : reject(new Error('PNG 產生失敗'))), 'image/png');
+      };
+      img.onerror = () => reject(new Error('PNG 產生失敗'));
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  }
+
+  function fileName(ext: string) {
+    const n = state.name.trim().replace(/[\\/:*?"<>|\s]+/g, '-') || 'chord';
+    return `${n}.${ext}`;
+  }
+  function download(blob: Blob, name: string) {
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = name;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  }
+
+  $('#dl-svg').addEventListener('click', () => {
+    download(new Blob([exportSvg().svg], { type: 'image/svg+xml' }), fileName('svg'));
+  });
+  $('#dl-png').addEventListener('click', async () => {
+    try {
+      download(await pngBlob(), fileName('png'));
+    } catch (err) {
+      say((err as Error).message);
+    }
+  });
+  const copyPng = $<HTMLButtonElement>('#copy-png');
+  if ('ClipboardItem' in window && navigator.clipboard?.write) {
+    copyPng.hidden = false;
+    copyPng.addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': pngBlob() })]);
+        say('已複製圖片，可以直接貼到簡報或聊天室');
+      } catch {
+        say('這個瀏覽器不能複製圖片，請改用下載');
+      }
+    });
+  }
+
+  if (location.hash.length > 1) {
+    try {
+      load(Object.fromEntries(new URLSearchParams(location.hash.slice(1))));
+    } catch {}
+  }
+  render();
+</script>

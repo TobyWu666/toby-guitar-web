@@ -31,7 +31,7 @@ The teacher names the lesson's topic **before class** and expects a full, publis
 | Component | Example |
 | --- | --- |
 | `Fretboard` | `<Fretboard root="A" scale="minor-pentatonic" from={4} to={9} title="…" />` or `notes="6/5 6/8 5/5"` (string/fret). `show="interval"` starts on interval labels; `plain` = note names only (no root colour, no toggle). Note names/intervals are spelled by `src/lib/music.ts`. Horizontal on wide screens, vertical on phones. |
-| `Chord` | `<Chord name="Am7" frets="x02010" fingers="x02010" />`; comma-separate when frets ≥ 10. Children → side-by-side text. |
+| `Chord` | `<Chord name="Am7" frets="x02010" fingers="x02010" />`; comma-separate when frets ≥ 10. Same finger on the same fret across strings → drawn as a barre. Optional `base={5}` forces the starting fret. Children → side-by-side text. Drawing lives in `src/lib/chord.ts` (shared with the editor). |
 | `Chords` | wraps several `<Chord>` in a row |
 | `Tab` | `<Tab seq="6/5 6/8 \| 5/5 5/7" title="…" />` (`\|` bar line, `+` simultaneous) or a `raw` template string |
 | `Audio` | `import clip from './x.m4a'` then `<Audio src={clip} caption="…" />` (has 0.5×/0.75× speed) |
@@ -45,6 +45,7 @@ New component → add it to `src/components/mdx.ts` and this table.
 
 ## Other notes
 
+- Chord diagram editor at `/tools/chord/` (`src/pages/tools/chord.astro`, not in the nav): click to place dots → copy the `<Chord>` snippet or download PNG/SVG; state lives in the URL hash so a link reopens the same chord.
 - Search is a static index at `/search.json` (`src/pages/search.json.ts`) with substring matching (works for Chinese without segmentation). Component-prop text in `title/caption/q/alt/name` is indexed.
 - Dates are UTC midnight; format with helpers in `src/lib/content.ts` (they use UTC getters).
 - Real lessons start at lesson 1 (2026-09-23). A lesson is often created as `draft: true` before class (drafts show in `npm run dev` only) and filled in once the teacher sends the whiteboard photos.
